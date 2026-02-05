@@ -1,13 +1,45 @@
 <?php
 session_start();
+require_once "../config/db.php";
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'STAFF') {
     header("Location: login.php");
     exit();
 }
 
-// TEMP demo values (replace later with DB queries)
-$staffName  = "Dungu Fahad";
-$staffEmail = "dungu@gmail.com";
+/* =========================
+   FETCH STAFF DETAILS
+========================= */
+$userId = $_SESSION['user_id'];
+
+$sql = "SELECT full_name, email, profile_pic FROM users WHERE user_id = ? LIMIT 1";
+$stmt = $conn->prepare($sql);
+
+if (!$stmt) {
+    die("SQL Prepare failed: " . $conn->error);
+}
+
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows !== 1) {
+    // session exists but user missing → force logout
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+$user = $result->fetch_assoc();
+
+$staffName  = $user['full_name'];
+$staffEmail = $user['email'];
+
+$profilePic = $user['profile_pic'];
+
+$profilePicPath = (!empty($profilePic) && file_exists("../uploads/profiles/" . $profilePic))
+    ? "../uploads/profiles/" . $profilePic
+    : "../assets/images/ui.jpg";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,9 +73,9 @@ $staffEmail = "dungu@gmail.com";
     <!-- SIDEBAR -->
     <div class="sidebar p-3">
         <div class="profile text-center mb-4">
-            <img src="../assets/images/ui.jpg" class="profile-img mb-2" alt="Staff">
-            <div class="fw-semibold"><?= $staffName ?></div>
-            <small class="text-muted">(<?= $staffEmail ?>)</small>
+            <img src="<?= $profilePicPath ?>" class="profile-img mb-2" alt="Staff">
+            <div class="fw-semibold"><?= htmlspecialchars($staffName) ?></div>
+            <small class="text-muted">(<?= htmlspecialchars($staffEmail) ?>)</small>
         </div>
 
         <ul class="nav flex-column sidebar-menu">
@@ -72,7 +104,7 @@ $staffEmail = "dungu@gmail.com";
             </li>
         </ul>
 
-        <!-- SIDEBAR FOOTER (same as admin) -->
+        <!-- SIDEBAR FOOTER -->
         <div class="sidebar-footer">
             <p>SLMS &copy; v1.0</p>
         </div>
@@ -80,7 +112,7 @@ $staffEmail = "dungu@gmail.com";
 
     <!-- CONTENT -->
     <div class="content p-4 w-100">
-        <h4 class="mb-4 text-primary">Welcome <?= $staffName ?>!</h4>
+        <h4 class="mb-4 text-primary">Welcome <?= htmlspecialchars($staffName) ?>!</h4>
 
         <div class="row">
             <div class="col-md-12">

@@ -1,21 +1,54 @@
 <?php
 session_start();
+require_once "../config/db.php";
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'ADMIN') {
     header("Location: login.php");
     exit();
 }
-#require_once "../includes/dashboard_stats.php";
 
-// TEMP demo values (to be replaced later with DB queries)
-$adminName  = "Admin";
-$adminEmail = "admin@gmail.com";
-$totalStaff = 84;
-$totalLeave = 8;
-$stillOnLeave=6;
-$sickLeave=3;
-$passLeave=2;
-$annuaLeave=4;
+/* =========================
+   FETCH ADMIN DETAILS
+========================= */
+$userId = $_SESSION['user_id'];
 
+$sql = "SELECT full_name, email, profile_pic FROM users WHERE user_id = ? LIMIT 1";
+$stmt = $conn->prepare($sql);
+
+if (!$stmt) {
+    die("SQL Prepare failed: " . $conn->error);
+}
+
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows !== 1) {
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+$user = $result->fetch_assoc();
+
+$adminName  = $user['full_name'];
+$adminEmail = $user['email'];
+
+$profilePic = $user['profile_pic'];
+$profilePicPath = (!empty($profilePic) && file_exists("../uploads/profiles/" . $profilePic))
+    ? "../uploads/profiles/" . $profilePic
+    : "../assets/images/ui.jpg";
+
+/* =========================
+   TEMP DASHBOARD STATS
+   (until leave tables exist)
+========================= */
+$totalStaff   = 84;
+$totalLeave   = 8;
+$stillOnLeave = 6;
+$sickLeave    = 3;
+$passLeave    = 2;
+$annuaLeave   = 4;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,9 +83,9 @@ $annuaLeave=4;
     <div class="sidebar p-3">
 
         <div class="profile text-center mb-4">
-            <img src="../assets/images/ui.jpg" class="profile-img mb-2" alt="Admin">
-            <div class="fw-semibold"><?= $adminName ?></div>
-            <small class="text-muted">(<?= $adminEmail ?>)</small>
+            <img src="<?= $profilePicPath ?>" class="profile-img mb-2" alt="Admin">
+            <div class="fw-semibold"><?= htmlspecialchars($adminName) ?></div>
+            <small class="text-muted">(<?= htmlspecialchars($adminEmail) ?>)</small>
         </div>
 
         <ul class="nav flex-column sidebar-menu">
@@ -67,33 +100,35 @@ $annuaLeave=4;
                     <i class="bi bi-person"></i> My Profile
                 </a>
             </li>
+
             <li class="nav-item">
                 <a class="nav-link" href="#">
                     <i class="bi bi-lock"></i> Change Password
                 </a>
             </li>
 
+            <!-- STAFF DROPDOWN -->
             <li class="nav-item">
-            <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#staffMenu">
-                <span><i class="bi bi-people"></i> Staff</span>
-                <i class="bi bi-chevron-down small"></i>
-            </a>
+                <a class="nav-link d-flex justify-content-between align-items-center"
+                   data-bs-toggle="collapse" href="#staffMenu">
+                    <span><i class="bi bi-people"></i> Staff</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </a>
 
-            <ul class="nav flex-column ms-3 collapse" id="staffMenu">
-                <li class="nav-item">
-                    <a class="nav-link" href="addstaff.php">
-                        <i class="bi bi-person-plus"></i> Add Staff
-                    </a>
-                </li>
+                <ul class="nav flex-column ms-3 collapse" id="staffMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="addstaff.php">
+                            <i class="bi bi-person-plus"></i> Add Staff
+                        </a>
+                    </li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="managestaff.php">
-                        <i class="bi bi-list-check"></i> Manage Staff
-                    </a>
-                </li>
-            </ul>
+                    <li class="nav-item">
+                        <a class="nav-link" href="managestaff.php">
+                            <i class="bi bi-list-check"></i> Manage Staff
+                        </a>
+                    </li>
+                </ul>
             </li>
-        <!-- staff --->
 
             <li class="nav-item">
                 <a class="nav-link" href="#">
@@ -108,7 +143,7 @@ $annuaLeave=4;
             </li>
         </ul>
 
-        <!-- ✅ SIDEBAR FOOTER (CORRECT POSITION) -->
+        <!-- SIDEBAR FOOTER -->
         <div class="sidebar-footer">
             <p>SLMS &copy; <?= date('Y'); ?></p>
         </div>
@@ -117,7 +152,7 @@ $annuaLeave=4;
 
     <!-- CONTENT -->
     <div class="content p-4 w-100">
-        <h4 class="mb-4 text-primary">Welcome <?= $adminName ?>!</h4>
+        <h4 class="mb-4 text-primary">Welcome <?= htmlspecialchars($adminName) ?>!</h4>
 
         <div class="row g-4">
             <div class="col-md-4">
@@ -129,31 +164,35 @@ $annuaLeave=4;
 
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div class="stat-title">TOTAL LEAVE RECIEVED/REQUESTS(PENDING)</div>
+                    <div class="stat-title">TOTAL LEAVE RECEIVED / PENDING</div>
                     <div class="stat-value"><?= $totalLeave ?></div>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div class="stat-title">TOTAL NUMBER OF STAFF ON LEAVE </div>
+                    <div class="stat-title">TOTAL STAFF ON LEAVE</div>
                     <div class="stat-value"><?= $stillOnLeave ?></div>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div class="stat-title">TOTAL NUMBER ON ANNUAL-LEAVE </div>
+                    <div class="stat-title">ANNUAL LEAVE</div>
                     <div class="stat-value"><?= $annuaLeave ?></div>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div class="stat-title">TOTAL NUMBER  ON PASS-LEAVE </div>
+                    <div class="stat-title">PASS LEAVE</div>
                     <div class="stat-value"><?= $passLeave ?></div>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div class="stat-title">TOTAL NUMBER  ON SICK-LEAVE </div>
+                    <div class="stat-title">SICK LEAVE</div>
                     <div class="stat-value"><?= $sickLeave ?></div>
                 </div>
             </div>

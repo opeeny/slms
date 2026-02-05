@@ -1,13 +1,43 @@
 <?php
 session_start();
+require_once "../config/db.php";
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'ADMIN') {
     header("Location: login.php");
     exit();
 }
 
-// TEMP demo values
-$adminName  = "Admin admin";
-$adminEmail = "admin@gmail.com";
+/* =========================
+   FETCH ADMIN DETAILS
+========================= */
+$userId = $_SESSION['user_id'];
+
+$sql = "SELECT full_name, email, profile_pic FROM users WHERE user_id = ? LIMIT 1";
+$stmt = $conn->prepare($sql);
+
+if (!$stmt) {
+    die("SQL Prepare failed: " . $conn->error);
+}
+
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows !== 1) {
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+$user = $result->fetch_assoc();
+
+$adminName  = $user['full_name'];
+$adminEmail = $user['email'];
+$profilePic = $user['profile_pic'];
+
+$profilePicPath = (!empty($profilePic) && file_exists("../uploads/profiles/" . $profilePic))
+    ? "../uploads/profiles/" . $profilePic
+    : "../assets/images/ui.jpg";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,7 +72,7 @@ $adminEmail = "admin@gmail.com";
     <div class="sidebar p-3">
 
         <div class="profile text-center mb-4">
-            <img src="../assets/images/ui.jpg" class="profile-img mb-2" alt="Admin">
+             <img src="<?= $profilePicPath ?>" class="profile-img mb-2" alt="Admin">
             <div class="fw-semibold"><?= $adminName ?></div>
             <small class="text-muted">(<?= $adminEmail ?>)</small>
         </div>
