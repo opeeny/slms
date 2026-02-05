@@ -113,6 +113,24 @@ $adminEmail = "admin@gmail.com";
         <div class="bg-white p-4 rounded shadow-sm mx-auto" style="max-width: 900px;">
             <h5 class="text-center text-primary mb-4">Add Staff Details</h5>
 
+            <!-- ✅ SUCCESS MESSAGE (ONLY ADDITION) -->
+            <?php if (isset($_SESSION['flash_success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Success!</strong> <?= $_SESSION['flash_success']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['flash_success']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['flash_error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Error!</strong> <?= $_SESSION['flash_error']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['flash_error']); ?>
+            <?php endif; ?>
+
+
             <form method="POST" action="addstaff_process.php" enctype="multipart/form-data">
 
                 <div class="mb-3">
@@ -123,7 +141,10 @@ $adminEmail = "admin@gmail.com";
                     <label class="form-label">Service Number</label>
                     <input type="text" name="service_number" class="form-control" required>
                 </div>
-
+                <div class="mb-3">
+                    <label class="form-label">Rank</label>
+                    <input type="text" name="rank" class="form-control" required>
+                </div>
                 <div class="mb-3">
                     <label class="form-label">First Name</label>
                     <input type="text" name="first_name" class="form-control" required>
@@ -147,7 +168,6 @@ $adminEmail = "admin@gmail.com";
                 </button>
             </form>
         </div>
-
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -15,18 +15,16 @@ $email    = trim($_POST['email']);
 $password = $_POST['password'];
 
 /* ======================
-   FETCH USER + ROLE
+   ADMIN LOGIN QUERY (RBAC)
 ====================== */
 $sql = "
-SELECT 
-    u.user_id,
-    u.password,
-    u.status,
-    r.role_name
-FROM users u
-JOIN roles r ON u.role_id = r.role_id
-WHERE u.email = ?
-LIMIT 1
+    SELECT u.user_id, u.password, r.role_name
+    FROM users u
+    INNER JOIN roles r ON u.role_id = r.role_id
+    WHERE u.email = ?
+      AND r.role_name = 'ADMIN'
+      AND u.status = 'ACTIVE'
+    LIMIT 1
 ";
 
 $stmt = $conn->prepare($sql);
@@ -39,30 +37,12 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows !== 1) {
-    $_SESSION['error'] = "Invalid credentials.";
+    $_SESSION['error'] = "Invalid email or account not active.";
     header("Location: login.php");
     exit();
 }
 
 $user = $result->fetch_assoc();
-
-/* ======================
-   STATUS CHECK
-====================== */
-if ($user['status'] !== 'ACTIVE') {
-    $_SESSION['error'] = "Account is inactive.";
-    header("Location: login.php");
-    exit();
-}
-
-/* ======================
-   ROLE CHECK (ADMIN ONLY)
-====================== */
-if ($user['role_name'] !== 'ADMIN') {
-    $_SESSION['error'] = "Unauthorized access.";
-    header("Location: login.php");
-    exit();
-}
 
 /* ======================
    PASSWORD VERIFY
@@ -74,10 +54,10 @@ if (!password_verify($password, $user['password'])) {
 }
 
 /* ======================
-   SUCCESS → SET SESSION
+   LOGIN SUCCESS
 ====================== */
 $_SESSION['user_id'] = $user['user_id'];
-$_SESSION['role']    = $user['role_name']; // ADMIN
+$_SESSION['role']    = $user['role_name'];
 
 header("Location: dashboard.php");
 exit();
