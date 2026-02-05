@@ -1,0 +1,195 @@
+/* =====================
+   GLOBAL
+===================== */
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f5f6fa;
+}
+
+/* =====================
+   LANDING PAGE
+===================== */
+.landing-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(
+        rgba(0,0,0,0.25),
+        rgba(0,0,0,0.25)
+    ),
+    url('../images/bgu.jpg') no-repeat center center / cover;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* TITLE */
+.title-container {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.title-container h1 {
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 500;
+}
+
+/* CARD */
+.landing-card {
+    background: #ffffff;
+    width: 420px;
+    padding: 35px;
+    border-radius: 12px;
+}
+
+/* BUTTONS */
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.btn-staff,
+.btn-admin {
+    width: 130px;
+    padding: 10px 0;
+    background-color: #0f9d8a;
+    color: #ffffff;
+    border-radius: 6px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+}
+
+.btn-staff:hover,
+.btn-admin:hover {
+    background-color: #0b7d6d;
+}
+
+/* =====================
+   STANDBY BANNER
+===================== */
+.standby-banner {
+    width: 100%;
+    background-color: #c0392b;
+    color: #ffffff;
+    text-align: center;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+}
+
+/* =====================
+   DASHBOARD LAYOUT
+===================== */
+
+/* TOP BAR */
+.topbar {
+    height: 56px;
+    background-color: #00acc1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    color: #ffffff;
+}
+
+/* SIDEBAR */
+.sidebar {
+    position: relative;
+    width: 240px;
+    min-height: calc(100vh - 56px);
+    background-color: #ffffff;
+    border-right: 1px solid #e0e0e0;
+
+    /* CRITICAL FIX */
+    display: flex;
+    flex-direction: column;
+}
+
+/* PROFILE */
+.profile {
+    text-align: center;
+}
+
+.profile-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* MENU */
+.sidebar-menu {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+
+    /* pushes footer to bottom */
+    flex-grow: 1;
+}
+
+.sidebar-menu .nav-link {
+    display: block;
+    padding: 10px 14px;
+    color: #555;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.sidebar-menu .nav-link i {
+    margin-right: 8px;
+}
+
+.sidebar-menu .nav-link.active,
+.sidebar-menu .nav-link:hover {
+    background-color: #e0f7fa;
+    color: #007c91;
+}
+
+/* SIDEBAR FOOTER */
+.sidebar-footer {
+    padding: 10px 0;
+}
+
+.sidebar-footer p {
+    margin: 0;
+    padding-left: 4px;
+    font-size: 12px;
+    color: #9e9e9e;
+    font-weight: 400;
+}
+
+/* CONTENT AREA */
+.content {
+    background-color: #f9f9f9;
+    min-height: calc(100vh - 56px);
+}
+
+/* =====================
+   DASHBOARD CARDS
+===================== */
+.stat-card {
+    background-color: #ffffff;
+    padding: 22px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stat-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #333;
+}

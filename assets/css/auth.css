@@ -1,0 +1,31 @@
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ===== BACKGROUND (SAME AS LANDING PAGE) ===== */
+.auth-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(
+        rgba(0,0,0,0.45),
+        rgba(0,0,0,0.45)
+    ),
+    url('../images/bgu.jpg') no-repeat center center / cover;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ===== LOGIN CARD ===== */
+.auth-card {
+    background: #ffffff;
+    width: 380px;
+    padding: 35px;
+    border-radius: 12px;
+}
+
+/* Optional polish */
+.auth-card h4 {
+    font-weight: 500;
+}
