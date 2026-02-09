@@ -8,75 +8,17 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'ADMIN') {
 }
 
 /* =====================================================
-   AJAX: FETCH STAFF (EDIT MODAL)
-===================================================== */
-if (isset($_POST['fetch_staff'])) {
-
-    $id = intval($_POST['id']);
-
-    $stmt = $conn->prepare("
-        SELECT user_id, service_number, rank, full_name, email
-        FROM users
-        WHERE user_id = ?
-        LIMIT 1
-    ");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-
-    echo json_encode($stmt->get_result()->fetch_assoc());
-    exit();
-}
-
-/* =====================================================
-   AJAX: UPDATE STAFF + AUDIT LOG
-===================================================== */
-if (isset($_POST['update_staff'])) {
-
-    $id    = intval($_POST['user_id']);
-    $sn    = trim($_POST['service_number']);
-    $rank  = trim($_POST['rank']);
-    $name  = trim($_POST['full_name']);
-    $email = trim($_POST['email']);
-
-    $stmt = $conn->prepare("
-        UPDATE users
-        SET service_number = ?, rank = ?, full_name = ?, email = ?
-        WHERE user_id = ?
-    ");
-    $stmt->bind_param("ssssi", $sn, $rank, $name, $email, $id);
-    $stmt->execute();
-
-    /* AUDIT LOG */
-    $adminId = $_SESSION['user_id'];
-    $ip      = $_SERVER['REMOTE_ADDR'];
-    $action  = "STAFF_UPDATED";
-    $details = "Updated staff details (User ID: {$id})";
-
-    $log = $conn->prepare("
-        INSERT INTO audit_logs (user_id, action, details, ip_address)
-        VALUES (?, ?, ?, ?)
-    ");
-    $log->bind_param("isss", $adminId, $action, $details, $ip);
-    $log->execute();
-
-    echo "OK";
-    exit();
-}
-
-/* =====================================================
    AJAX: DATATABLES SERVER-SIDE
 ===================================================== */
 if (isset($_POST['draw'])) {
 
     $columns = [
-        0 => 'u.user_id',
-        1 => 'u.profile_pic',
-        2 => 'u.service_number',
-        3 => 'u.rank',
-        4 => 'u.full_name',
-        5 => 'u.email',
-        6 => 'u.created_at',
-        7 => 'u.status'
+        0 => 'al.log_id',
+        1 => 'u.full_name',
+        2 => 'al.action',
+        3 => 'al.details',
+        4 => 'al.ip_address',
+        5 => 'al.created_at'
     ];
 
     $limit  = intval($_POST['length']);
@@ -85,26 +27,28 @@ if (isset($_POST['draw'])) {
     $dir    = $_POST['order'][0]['dir'];
     $search = $_POST['search']['value'];
 
-    $where = "WHERE r.role_name = 'STAFF'";
+    $where = "WHERE 1=1";
     if ($search) {
         $search = "%{$search}%";
         $where .= " AND (
             u.full_name LIKE ?
-            OR u.email LIKE ?
-            OR u.rank LIKE ?
-            OR u.service_number LIKE ?
+            OR al.action LIKE ?
+            OR al.details LIKE ?
+            OR al.ip_address LIKE ?
         )";
     }
 
     $total = $conn->query("
         SELECT COUNT(*) total
-        FROM users u JOIN roles r ON u.role_id = r.role_id
-        WHERE r.role_name = 'STAFF'
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.user_id
     ")->fetch_assoc()['total'];
 
     $sql = "
-        SELECT u.*
-        FROM users u JOIN roles r ON u.role_id = r.role_id
+        SELECT al.log_id, al.action, al.details, al.ip_address, al.created_at,
+               u.full_name, u.profile_pic
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.user_id
         $where
         ORDER BY $order $dir
         LIMIT ? OFFSET ?
@@ -125,49 +69,28 @@ if (isset($_POST['draw'])) {
             ? "../uploads/profiles/".$row['profile_pic']
             : "../assets/images/ui.jpg";
 
-        $badge = match($row['status']) {
-            'ACTIVE' => "<span class='badge bg-success'>ACTIVE</span>",
-            'SUSPENDED' => "<span class='badge bg-warning text-dark'>SUSPENDED</span>",
-            default => "<span class='badge bg-secondary'>INACTIVE</span>"
+        $userName = $row['full_name'] ? htmlspecialchars($row['full_name']) : '<em>System</em>';
+
+        $actionBadge = match(true) {
+            str_contains($row['action'], 'LOGIN') => "<span class='badge bg-success'>{$row['action']}</span>",
+            str_contains($row['action'], 'LOGOUT') => "<span class='badge bg-secondary'>{$row['action']}</span>",
+            str_contains($row['action'], 'CREATED') || str_contains($row['action'], 'ADDED') => "<span class='badge bg-primary'>{$row['action']}</span>",
+            str_contains($row['action'], 'UPDATED') || str_contains($row['action'], 'MODIFIED') => "<span class='badge bg-info'>{$row['action']}</span>",
+            str_contains($row['action'], 'DELETED') || str_contains($row['action'], 'REMOVED') => "<span class='badge bg-danger'>{$row['action']}</span>",
+            str_contains($row['action'], 'SUSPENDED') || str_contains($row['action'], 'CHANGE') => "<span class='badge bg-warning text-dark'>{$row['action']}</span>",
+            default => "<span class='badge bg-secondary'>{$row['action']}</span>"
         };
 
-        $actions = "
-            <a href='#' class='text-primary me-2 editStaff'
-               data-id='{$row['user_id']}' title='Edit'>
-                <i class='bi bi-pencil-square'></i>
-            </a>
-        ";
-
-        if ($row['status'] === 'ACTIVE') {
-            $actions .= "
-                <a href='#' class='text-warning actionBtn me-2'
-                   data-id='{$row['user_id']}' data-status='SUSPENDED' title='Suspend'>
-                    <i class='bi bi-pause-circle'></i>
-                </a>
-                <a href='#' class='text-danger actionBtn'
-                   data-id='{$row['user_id']}' data-status='INACTIVE' title='Deactivate'>
-                    <i class='bi bi-x-circle'></i>
-                </a>
-            ";
-        } else {
-            $actions .= "
-                <a href='#' class='text-success actionBtn'
-                   data-id='{$row['user_id']}' data-status='ACTIVE' title='Activate'>
-                    <i class='bi bi-check-circle'></i>
-                </a>
-            ";
-        }
-
         $data[] = [
-            $row['user_id'],
-            "<img src='{$pic}' class='rounded-circle' width='40'>",
-            htmlspecialchars($row['service_number']),
-            htmlspecialchars($row['rank']),
-            htmlspecialchars($row['full_name']),
-            htmlspecialchars($row['email']),
-            date("M d, Y h:i a", strtotime($row['created_at'])),
-            $badge,
-            $actions
+            $row['log_id'],
+            "<div class='d-flex align-items-center'>
+                <img src='{$pic}' class='rounded-circle me-2' width='35' height='35'>
+                {$userName}
+             </div>",
+            $actionBadge,
+            htmlspecialchars($row['details']),
+            htmlspecialchars($row['ip_address']),
+            date("M d, Y h:i a", strtotime($row['created_at']))
         ];
     }
 
@@ -179,37 +102,6 @@ if (isset($_POST['draw'])) {
     ]);
     exit();
 }
-/* =====================================================
-   AJAX: STATUS UPDATE + AUDIT
-===================================================== */
-if (isset($_POST['update_status'])) {
-
-    $uid  = intval($_POST['user_id']);
-    $stat = $_POST['status'];
-
-    /* UPDATE USER STATUS */
-    $stmt = $conn->prepare("UPDATE users SET status = ? WHERE user_id = ?");
-    $stmt->bind_param("si", $stat, $uid);
-    $stmt->execute();
-    $stmt->close();
-
-    /* AUDIT LOG */
-    $adminId = $_SESSION['user_id'];
-    $details = "Changed staff status to {$stat}";
-    $ip      = $_SERVER['REMOTE_ADDR'];
-
-    $log = $conn->prepare("
-        INSERT INTO audit_logs (user_id, action, details, ip_address)
-        VALUES (?, 'USER_STATUS_CHANGE', ?, ?)
-    ");
-    $log->bind_param("iss", $adminId, $details, $ip);
-    $log->execute();
-    $log->close();
-
-    echo "OK";
-    exit();
-}
-
 
 /* =====================================================
    FETCH ADMIN DETAILS
@@ -231,7 +123,7 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manage Staff | SLMS</title>
+<title>Audit Log | SLMS</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -367,6 +259,7 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
         text-decoration: none;
         transition: all 0.3s;
         border-left: 3px solid transparent;
+        font-weight: 400;
     }
 
     .sidebar-menu a:hover,
@@ -405,6 +298,7 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
     .submenu .submenu-item {
         padding-left: 60px !important;
         font-size: 14px;
+        font-weight: 400;
     }
 
     .submenu .submenu-item:hover,
@@ -508,8 +402,12 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
     table.dataTable thead th {
         background: #f8f9fa;
         color: #333;
-        font-weight: 600;
+        font-weight: 500;
         border-bottom: 2px solid #17a2b8;
+    }
+
+    table.dataTable tbody td {
+        vertical-align: middle;
     }
 
     .table-actions {
@@ -577,7 +475,7 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
                     </a>
                 </li>
                 <li>
-                    <a href="managestaff.php" class="submenu-item active">
+                    <a href="managestaff.php" class="submenu-item">
                         <i class="bi bi-people-fill"></i>
                         <span class="menu-label">Manage Staff</span>
                     </a>
@@ -591,7 +489,7 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
             </a>
         </li>
         <li>
-            <a href="audit_log.php">
+            <a href="audit_log.php" class="active">
                 <i class="bi bi-file-text"></i>
                 <span class="menu-label">Audit Log</span>
             </a>
@@ -612,22 +510,19 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
 <!-- MAIN CONTENT -->
 <div class="main-content" id="mainContent">
     <div class="content-header">
-        <h5>Manage Staff Details</h5>
+        <h5>Audit Log</h5>
     </div>
 
     <div class="content-card">
-        <table id="staffTable" class="table table-bordered table-striped table-hover align-middle">
+        <table id="auditTable" class="table table-bordered table-striped table-hover align-middle">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Profile Pic</th>
-                    <th>Service Number</th>
-                    <th>Rank</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Created At</th>
-                    <th>Status</th>
+                    <th>Log ID</th>
+                    <th>User</th>
                     <th>Action</th>
+                    <th>Details</th>
+                    <th>IP Address</th>
+                    <th>Date & Time</th>
                 </tr>
             </thead>
         </table>
@@ -643,45 +538,6 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
     </div>
 </footer>
 
-<!-- EDIT MODAL -->
-<div class="modal fade" id="editStaffModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form id="editStaffForm" class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Staff Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" name="user_id" id="edit_id">
-                
-                <div class="mb-3">
-                    <label class="form-label">Service Number</label>
-                    <input type="text" class="form-control" name="service_number" id="edit_sn" required>
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Rank</label>
-                    <input type="text" class="form-control" name="rank" id="edit_rank" required>
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Full Name</label>
-                    <input type="text" class="form-control" name="full_name" id="edit_name" required>
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" id="edit_email" required>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -689,9 +545,6 @@ $profilePicPath = (!empty($admin['profile_pic']) && file_exists("../uploads/prof
 
 <script>
 $(function () {
-
-    // Show staff submenu by default since we're on manage staff page
-    $('#staffSubmenu').addClass('show');
 
     // Menu Toggle
     $('#menuToggle').click(function() {
@@ -701,82 +554,35 @@ $(function () {
     });
 
     // Initialize DataTable
-    const table = $('#staffTable').DataTable({
+    const table = $('#auditTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: { 
-            url: 'managestaff.php', 
+            url: 'audit_log.php', 
             type: 'POST' 
         },
         columns: [
-            { data: 0 },
-            { data: 1 },
-            { data: 2 },
-            { data: 3 },
-            { data: 4 },
-            { data: 5 },
-            { data: 6 },
-            { data: 7 },
-            { data: 8 }
+            { data: 0, width: '8%' },
+            { data: 1, width: '15%' },
+            { data: 2, width: '12%' },
+            { data: 3, width: '35%' },
+            { data: 4, width: '12%' },
+            { data: 5, width: '18%' }
         ],
+        order: [[0, 'desc']], // Order by log_id descending (newest first)
         responsive: true,
         language: {
-            search: "Search Staff:",
+            search: "Search Logs:",
             lengthMenu: "Show _MENU_ entries",
-            info: "Showing _START_ to _END_ of _TOTAL_ staff members",
+            info: "Showing _START_ to _END_ of _TOTAL_ audit logs",
             paginate: {
                 first: "First",
                 last: "Last",
                 next: "Next",
                 previous: "Previous"
-            }
+            },
+            processing: "Loading audit logs..."
         }
-    });
-
-    // Edit Staff
-    $(document).on('click', '.editStaff', function (e) {
-        e.preventDefault();
-        $.post('managestaff.php', { 
-            fetch_staff: 1, 
-            id: $(this).data('id') 
-        }, function (r) {
-            const s = JSON.parse(r);
-            $('#edit_id').val(s.user_id);
-            $('#edit_sn').val(s.service_number);
-            $('#edit_rank').val(s.rank);
-            $('#edit_name').val(s.full_name);
-            $('#edit_email').val(s.email);
-            new bootstrap.Modal('#editStaffModal').show();
-        });
-    });
-
-    // Submit Edit Form
-    $('#editStaffForm').submit(function (e) {
-        e.preventDefault();
-        $.post('managestaff.php', $(this).serialize() + '&update_staff=1', function () {
-            $('#editStaffModal').modal('hide');
-            table.ajax.reload(null, false);
-            
-            // Show success message (optional)
-            alert('Staff details updated successfully!');
-        });
-    });
-
-    // Update Status
-    $(document).on('click', '.actionBtn', function (e) {
-        e.preventDefault();
-        if (!confirm('Are you sure you want to proceed with this action?')) return;
-        
-        $.post('managestaff.php', {
-            update_status: 1,
-            user_id: $(this).data('id'),
-            status: $(this).data('status')
-        }, function() {
-            table.ajax.reload(null, false);
-            
-            // Show success message (optional)
-            alert('Staff status updated successfully!');
-        });
     });
 
 });

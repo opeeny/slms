@@ -47,7 +47,7 @@ $profilePicPath = (!empty($profilePic) && file_exists("../uploads/profiles/" . $
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Staff Dashboard | SLMS</title>
+<title>Apply For Leave | SLMS</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -82,16 +82,6 @@ body {
     border: none;
     color: white;
     font-size: 24px;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.header-right a {
-    color: white;
 }
 
 /* Sidebar */
@@ -184,12 +174,14 @@ body {
     left: 0;
 }
 
-/* Cards */
-.stat-card {
+/* Form Card */
+.form-card {
     background: white;
-    padding: 25px;
-    border-radius: 10px;
+    padding: 30px;
+    border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    max-width: 800px;
+    margin: 0 auto; /* ✅ CENTER CARD */
 }
 </style>
 </head>
@@ -207,7 +199,7 @@ body {
 
     <div class="header-right">
         <i class="bi bi-bell fs-5" title="Notifications"></i>
-        <a href="../auth/logout.php" title="Logout">
+        <a href="../auth/logout.php" class="text-white">
             <i class="bi bi-box-arrow-right fs-5"></i>
         </a>
     </div>
@@ -222,48 +214,58 @@ body {
     </div>
 
     <ul class="sidebar-menu list-unstyled">
-        <li>
-            <a href="dashboard.php" class="active">
-                <i class="bi bi-speedometer2 me-2"></i> Dashboard
-            </a>
-        </li>
-        <li>
-            <a href="apply_leave.php">
-                <i class="bi bi-calendar-plus me-2"></i> Apply Leave
-            </a>
-        </li>
-        <li>
-            <a href="leave_history.php">
-                <i class="bi bi-clock-history me-2"></i> Leave History
-            </a>
-        </li>
-        <li>
-            <a href="../auth/logout.php" class="text-danger">
-                <i class="bi bi-box-arrow-right me-2"></i> Sign Out
-            </a>
-        </li>
+        <li><a href="dashboard.php"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a></li>
+        <li><a href="apply_leave.php" class="active"><i class="bi bi-calendar-plus me-2"></i> Apply For Leave</a></li>
+        <li><a href="leave_history.php"><i class="bi bi-clock-history me-2"></i> Leave History</a></li>
+        <li><a href="../auth/logout.php" class="text-danger"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
     </ul>
 
-    <!-- SLMS© AT BOTTOM OF SIDEBAR -->
-    <div class="sidebar-footer">
-        SLMS©
-    </div>
+    <div class="sidebar-footer">SLMS©</div>
 </aside>
 
 <!-- MAIN CONTENT -->
 <div class="main-content" id="mainContent">
-    <h4 class="text-primary mb-4">Welcome, <?= htmlspecialchars($staffName) ?> 👋</h4>
 
-    <div class="row">
-        <div class="col-md-12">
-            <div class="stat-card">
-                <h6 class="text-uppercase text-muted">Staff Dashboard</h6>
-                <p class="mb-0 text-muted">
-                    Use the sidebar to apply for leave and monitor your leave history.
-                </p>
+    <div class="form-card">
+        <h5 class="text-primary mb-4 text-center">Apply For Leave</h5>
+
+        <form method="POST" action="apply_leave_process.php">
+
+            <div class="mb-3">
+                <label class="form-label">Leave Type</label>
+                <select name="leave_type" class="form-select" required>
+                    <option value="">-- Select Leave Type --</option>
+                    <option value="ANNUAL">Annual Leave</option>
+                    <option value="SICK">Sick Leave</option>
+                    <option value="PASS">Pass Leave</option>
+                </select>
             </div>
-        </div>
+
+            <div class="mb-3">
+                <label class="form-label">From Date</label>
+                <input type="date" name="start_date" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">To Date</label>
+                <input type="date" name="end_date" class="form-control" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Message</label>
+                <textarea name="message" class="form-control" rows="4"></textarea>
+            </div>
+
+            <!-- ✅ CENTERED BUTTON -->
+            <div class="text-center">
+                <button type="submit" class="btn btn-info text-white px-5">
+                    APPLY LEAVE
+                </button>
+            </div>
+
+        </form>
     </div>
+
 </div>
 
 <!-- FOOTER -->
